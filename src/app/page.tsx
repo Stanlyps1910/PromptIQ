@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import OverallScore from '@/components/OverallScore';
 import ScoreCard from '@/components/ScoreCard';
 import ToggleMode from '@/components/ToggleMode';
+import APIKeyModal from '@/components/APIKeyModal';
 import { ruleBasedScore } from '@/lib/ruleBasedScorer';
 import { ScoreResponse, ScoreResult, ScoringMode, TokenUsage } from '@/lib/types';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Terminal, FileText, BarChart3, HelpCircle, Activity, Lightbulb, Coins, Sun, Moon, AlertTriangle } from 'lucide-react';
+import { Sparkles, Terminal, FileText, BarChart3, HelpCircle, Activity, Lightbulb, Coins, Sun, Moon, AlertTriangle, Key } from 'lucide-react';
 
 const SAMPLE_PROMPT = `Act as a senior software engineer. I am a junior developer building my first REST API in Node.js. Explain how to structure routes, handle errors, and validate input in a clear step-by-step guide. Write in a friendly, mentor-like tone. Format the response with code examples and bullet points.`;
 const SESSION_TOKEN_LIMIT = 25000;
@@ -26,6 +27,8 @@ export default function Home() {
   });
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [userApiKey, setUserApiKey] = useState('');
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -50,11 +53,27 @@ export default function Home() {
     } else {
       document.documentElement.classList.add('dark');
     }
+
+    const savedApiKey = localStorage.getItem('promptiq-api-key') || '';
+    setUserApiKey(savedApiKey);
   }, []);
 
   useEffect(() => {
     localStorage.setItem('promptiq-mode', mode);
   }, [mode]);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedApiKey = localStorage.getItem('promptiq-api-key') || '';
+      setUserApiKey(savedApiKey);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    const interval = setInterval(handleStorageChange, 500);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Auto-dismiss toast warnings after 7 seconds
   useEffect(() => {
@@ -96,7 +115,7 @@ export default function Home() {
       const res = await fetch('/api/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: trimmed, mode: currentMode }),
+        body: JSON.stringify({ prompt: trimmed, mode: currentMode, apiKey: userApiKey }),
         signal: controller.signal
       });
 
@@ -158,7 +177,7 @@ export default function Home() {
         setLlmLoading(false);
       }
     }
-  }, []);
+  }, [userApiKey]);
 
   function handleChange(value: string) {
     setPrompt(value);
@@ -218,6 +237,18 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* API Key Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setApiKeyModalOpen(true)}
+              className="glass-panel glass-panel-hover gap-1.5 text-xs font-semibold px-3 h-9"
+              aria-label="Configure API Key"
+            >
+              <Key className={`h-3.5 w-3.5 ${userApiKey ? 'text-emerald-400' : 'text-amber-400'}`} />
+              <span className="hidden md:inline">{userApiKey ? 'API Key Set' : 'Set API Key'}</span>
+            </Button>
+
             {/* Theme Toggle Button */}
             <Button
               variant="outline"
@@ -454,6 +485,9 @@ export default function Home() {
           </button>
         </div>
       )}
+
+      {/* API Key Configuration Modal */}
+      <APIKeyModal isOpen={apiKeyModalOpen} onClose={() => setApiKeyModalOpen(false)} />
 
       {/* Footer copyright */}
       <footer className="mt-12 text-center border-t border-black/5 dark:border-white/5 pt-6 text-[10px] tracking-wider text-muted-foreground/40 font-semibold uppercase">

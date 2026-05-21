@@ -47,10 +47,10 @@ function extractJSON(text: string): LLMResponse {
   throw new Error('Evaluation model returned an invalid JSON response structure.');
 }
 
-async function scoreWithMistral(prompt: string): Promise<ScoreResponse> {
-  const apiKey = process.env.MISTRAL_API_KEY;
+async function scoreWithMistral(prompt: string, userApiKey?: string): Promise<ScoreResponse> {
+  const apiKey = userApiKey || process.env.MISTRAL_API_KEY;
   if (!apiKey) {
-    throw new Error('Mistral API Key is missing. Please configure MISTRAL_API_KEY in your env file.');
+    throw new Error('Mistral API Key is missing. Please configure your API key in the dashboard settings.');
   }
 
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -128,14 +128,14 @@ async function scoreWithOllama(prompt: string): Promise<ScoreResponse> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, mode } = await req.json();
+    const { prompt, mode, apiKey } = await req.json();
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Prompt text is required for evaluation.' }, { status: 400 });
     }
 
     const llmMode: ScoringMode = mode === 'local' ? 'local' : 'cloud';
     const result = llmMode === 'cloud'
-      ? await scoreWithMistral(prompt)
+      ? await scoreWithMistral(prompt, apiKey)
       : await scoreWithOllama(prompt);
 
     return NextResponse.json(result);
