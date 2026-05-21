@@ -489,10 +489,7 @@ export default function Home() {
       {/* API Key Configuration Modal */}
       <APIKeyModal isOpen={apiKeyModalOpen} onClose={() => setApiKeyModalOpen(false)} />
 
-      {/* Footer copyright */}
-      <footer className="mt-12 text-center border-t border-black/5 dark:border-white/5 pt-6 text-[10px] tracking-wider text-muted-foreground/40 font-semibold uppercase">
-        © 2026 PromptIQ. All rights reserved. Powered by Mistral Cloud & Ollama.
-      </footer>
+    
     </div>
   );
 }
